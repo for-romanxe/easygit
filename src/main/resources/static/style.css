@@ -211,6 +211,56 @@ body {
 }
 .review-output.is-loading { color: var(--muted); }
 
+/* 로그인 */
+.auth-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex; align-items: center; justify-content: center;
+}
+/* hidden 속성이 display:flex 보다 우선하도록 (안 그러면 로그인 후에도 안 사라짐) */
+.auth-overlay[hidden] { display: none; }
+.auth-box {
+  background: #fff; border-radius: 14px; padding: 28px; width: 330px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3); display: flex; flex-direction: column; gap: 10px;
+}
+.auth-box h2 { font-size: 20px; }
+.auth-sub { color: var(--muted); font-size: 13px; margin-bottom: 4px; }
+.auth-msg { color: var(--danger); font-size: 13px; min-height: 16px; margin: 0; }
+.auth-chip {
+  color: #fff; font-size: 14px; background: rgba(255,255,255,0.14);
+  padding: 5px 12px; border-radius: 999px; white-space: nowrap;
+}
+
+/* 줄 단위 선택형 충돌 해결 */
+.merge-rows { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-bottom: 8px; }
+.merge-row { font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+.merge-row.common {
+  padding: 4px 10px; color: #475569; border-bottom: 1px solid #f1f5f9; white-space: pre-wrap;
+}
+.merge-row.choice {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+  padding: 6px; background: #fff7ed; border-bottom: 1px solid #f1f5f9;
+}
+.pick {
+  text-align: left; font: inherit; font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+  border: 1px solid var(--border); background: #fff; border-radius: 6px;
+  padding: 5px 8px; cursor: pointer; white-space: pre-wrap;
+}
+.pick:hover { border-color: var(--primary); }
+.pick.is-on { border-color: var(--ok); background: var(--ok-bg); }
+.pick-tag {
+  display: inline-block; font-size: 10px; color: #fff; background: #94a3b8;
+  border-radius: 4px; padding: 0 5px; margin-right: 6px;
+}
+.pick.is-on .pick-tag { background: var(--ok); }
+.conflict-file .final-label {
+  display: block; font-size: 12px; color: var(--ok); font-weight: 600; margin: 8px 0 4px;
+}
+.conflict-file textarea {
+  width: 100%; min-height: 80px; font-family: ui-monospace, Consolas, monospace; font-size: 12px;
+  border: 1px solid var(--ok); border-radius: 6px; padding: 8px;
+}
+
 @media (max-width: 860px) {
   .layout { grid-template-columns: 1fr; }
   .file-area { grid-template-columns: 1fr; }

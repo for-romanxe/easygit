@@ -17,7 +17,6 @@
   const filePath = $("file-path");
   const fileContent = $("file-content");
   const commitMessage = $("commit-message");
-  const commitAuthor = $("commit-author");
   const mergeFrom = $("merge-from");
   const mergeInto = $("merge-into");
   const mergeResult = $("merge-result");
@@ -28,6 +27,9 @@
   const diffOutput = $("diff-output");
   const historyList = $("history-list");
   const toast = $("toast");
+  const authOverlay = $("auth-overlay");
+  const userChip = $("user-chip");
+  const logoutBtn = $("btn-logout");
 
   // ----- API 도우미 -----
   async function api(path, options) {
@@ -35,9 +37,60 @@
       headers: { "Content-Type": "application/json" },
       ...options,
     });
+    if (res.status === 401) {
+      showLogin();
+      throw new Error("로그인이 필요합니다");
+    }
     const data = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(data.error || "요청 실패");
     return data;
+  }
+
+  // ----- 로그인 -----
+  async function authPost(action, body) {
+    const res = await fetch("/api/auth/" + action, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || "실패");
+    return data;
+  }
+
+  function showLogin() {
+    authOverlay.hidden = false;
+    userChip.hidden = true;
+    logoutBtn.hidden = true;
+    state.user = null;
+  }
+
+  function onLoggedIn(user) {
+    state.user = user;
+    userChip.textContent = "👤 " + user;
+    userChip.hidden = false;
+    logoutBtn.hidden = false;
+    authOverlay.hidden = true;
+    $("auth-msg").textContent = "";
+    $("auth-pass").value = "";
+    loadProjects().catch((e) => notify(e.message, true));
+  }
+
+  async function doAuth(action) {
+    const username = $("auth-user").value.trim();
+    const password = $("auth-pass").value;
+    try {
+      const d = await authPost(action, { username, password });
+      onLoggedIn(d.user);
+    } catch (e) {
+      $("auth-msg").textContent = e.message;
+    }
+  }
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    notify("로그아웃했습니다");
+    showLogin();
   }
 
   let toastTimer;
@@ -155,7 +208,6 @@
         path: filePath.value.trim(),
         content: fileContent.value,
         message: commitMessage.value,
-        author: commitAuthor.value,
       }),
     });
     notify("변경을 올렸습니다 (찰칵!)");
@@ -205,7 +257,7 @@
     }
   }
 
-  // 충돌난 파일들을 화면에서 직접 고쳐 해결
+  // 충돌난 파일들을 줄 단위로 '이쪽/저쪽' 선택해 해결
   async function openResolver() {
     const from = mergeFrom.value, into = mergeInto.value;
     const files = await api(`/projects/${enc(state.project)}/conflict?from=${enc(from)}&into=${enc(into)}`);
@@ -213,27 +265,75 @@
 
     conflictEditor.hidden = false;
     conflictEditor.innerHTML = "";
-    files.forEach((f) => {
-      const box = document.createElement("div");
-      box.className = "conflict-file";
-      box.innerHTML =
-        `<h4>⚠️ ${escapeHtml(f.path)} <small style="color:var(--muted);font-weight:400">— 빨간 줄이 서로 겹친 부분</small></h4>` +
-        `<div class="conflict-sides">` +
-          `<div><label>'${escapeHtml(into)}' 쪽</label><pre>${highlightLines(f.intoContent, f.fromContent)}</pre></div>` +
-          `<div><label>'${escapeHtml(from)}' 쪽</label><pre>${highlightLines(f.fromContent, f.intoContent)}</pre></div>` +
-        `</div>` +
-        `<div class="conflict-final"><label>최종 내용 (이대로 저장됩니다)</label>` +
-          `<textarea data-path="${escapeHtml(f.path)}"></textarea></div>`;
-      // 기본값: 합칠 대상(into) 내용으로 시작
-      box.querySelector("textarea").value = f.intoContent;
-      conflictEditor.appendChild(box);
-    });
+    files.forEach((f) => conflictEditor.appendChild(buildConflictFile(f, into, from)));
 
     const apply = document.createElement("button");
     apply.className = "btn btn--primary";
     apply.textContent = "이렇게 해결하고 합치기";
     apply.onclick = wrap(doResolve);
     conflictEditor.appendChild(apply);
+  }
+
+  // 파일 하나의 줄 단위 선택 UI를 만든다
+  function buildConflictFile(f, into, from) {
+    const box = document.createElement("div");
+    box.className = "conflict-file";
+
+    const intoLines = f.intoContent.split("\n");
+    const fromLines = f.fromContent.split("\n");
+    const n = Math.max(intoLines.length, fromLines.length);
+    const sel = []; // 각 줄의 선택: 'into' | 'from' | null(같은 줄)
+
+    const ta = document.createElement("textarea");
+    ta.dataset.path = f.path;
+
+    function recompute() {
+      const out = [];
+      for (let i = 0; i < n; i++) {
+        const a = intoLines[i] ?? "", b = fromLines[i] ?? "";
+        out.push(sel[i] === "from" ? b : a);
+      }
+      ta.value = out.join("\n");
+    }
+
+    const rows = document.createElement("div");
+    rows.className = "merge-rows";
+    for (let i = 0; i < n; i++) {
+      const a = intoLines[i] ?? "", b = fromLines[i] ?? "";
+      const row = document.createElement("div");
+      if (a === b) {
+        sel[i] = null;
+        row.className = "merge-row common";
+        row.textContent = a || " ";
+      } else {
+        sel[i] = "into"; // 기본은 '이쪽'
+        row.className = "merge-row choice";
+        const left = mkPick("이쪽", a, true);
+        const right = mkPick("저쪽", b, false);
+        left.onclick = () => { sel[i] = "into"; left.classList.add("is-on"); right.classList.remove("is-on"); recompute(); };
+        right.onclick = () => { sel[i] = "from"; right.classList.add("is-on"); left.classList.remove("is-on"); recompute(); };
+        row.appendChild(left);
+        row.appendChild(right);
+      }
+      rows.appendChild(row);
+    }
+    recompute();
+
+    const h = document.createElement("h4");
+    h.innerHTML = `⚠️ ${escapeHtml(f.path)} <small style="color:var(--muted);font-weight:400">— 겹친 줄에서 '이쪽/저쪽'을 골라보세요</small>`;
+    const lab = document.createElement("label");
+    lab.className = "final-label";
+    lab.textContent = "최종 내용 (직접 고쳐도 됩니다 — 이대로 저장)";
+
+    box.append(h, rows, lab, ta);
+    return box;
+  }
+
+  function mkPick(tag, text, on) {
+    const b = document.createElement("button");
+    b.className = "pick" + (on ? " is-on" : "");
+    b.innerHTML = `<span class="pick-tag">${tag}</span>${escapeHtml(text) || "(빈 줄)"}`;
+    return b;
   }
 
   async function doResolve() {
@@ -377,14 +477,6 @@
     sel.innerHTML = "";
     items.forEach((i) => sel.add(new Option(i, i)));
   }
-  // 한쪽 텍스트의 각 줄이 다른 쪽에 없으면 빨갛게 표시
-  function highlightLines(text, otherText) {
-    const others = new Set(otherText.split("\n"));
-    return text.split("\n").map((l) => {
-      const cls = others.has(l) ? "line" : "line diff-line";
-      return `<span class="${cls}">${escapeHtml(l) || " "}</span>`;
-    }).join("");
-  }
   function enc(s) { return encodeURIComponent(s); }
   function escapeHtml(s) {
     return String(s).replace(/[&<>"']/g, (c) =>
@@ -403,6 +495,11 @@
   $("btn-review").onclick = wrap(getReview);
   $("btn-diff").onclick = wrap(showDiff);
 
+  $("auth-login").onclick = () => doAuth("login");
+  $("auth-register").onclick = () => doAuth("register");
+  $("auth-pass").addEventListener("keydown", (e) => { if (e.key === "Enter") doAuth("login"); });
+  logoutBtn.onclick = wrap(logout);
+
   // 에러를 토스트로 보여주는 래퍼
   function wrap(fn) {
     return async () => {
@@ -411,6 +508,14 @@
     };
   }
 
-  // ----- 시작 -----
-  loadProjects().catch((e) => notify(e.message, true));
+  // ----- 시작: 로그인 상태 확인 -----
+  (async () => {
+    try {
+      const me = await (await fetch("/api/auth/me")).json();
+      if (me.user) onLoggedIn(me.user);
+      else showLogin();
+    } catch {
+      showLogin();
+    }
+  })();
 })();

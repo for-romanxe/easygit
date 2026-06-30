@@ -1,5 +1,6 @@
 package com.easygit;
 
+import jakarta.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -27,8 +28,8 @@ public class RepoController {
     }
 
     @PostMapping("/projects")
-    public Map<String, String> createProject(@RequestBody CreateProjectReq req) throws Exception {
-        git.createProject(req.name(), req.author());
+    public Map<String, String> createProject(@RequestBody CreateProjectReq req, HttpSession session) throws Exception {
+        git.createProject(req.name(), currentUser(session));
         return Map.of("name", req.name());
     }
 
@@ -67,8 +68,9 @@ public class RepoController {
 
     @PostMapping("/projects/{project}/commit")
     public Map<String, String> commit(@PathVariable String project,
-                                      @RequestBody CommitReq req) throws Exception {
-        git.commit(project, req.branch(), req.path(), req.content(), req.message(), req.author());
+                                      @RequestBody CommitReq req, HttpSession session) throws Exception {
+        // 변경한 사람은 로그인한 사용자로 기록 (수동 이름 입력 대신)
+        git.commit(project, req.branch(), req.path(), req.content(), req.message(), currentUser(session));
         return Map.of("status", "ok");
     }
 
@@ -101,8 +103,8 @@ public class RepoController {
 
     @PostMapping("/projects/{project}/resolve-merge")
     public MergeOutcome resolveMerge(@PathVariable String project,
-                                     @RequestBody ResolveReq req) {
-        return git.resolveMerge(project, req.from(), req.into(), req.resolutions());
+                                     @RequestBody ResolveReq req, HttpSession session) {
+        return git.resolveMerge(project, req.from(), req.into(), req.resolutions(), currentUser(session));
     }
 
     // --- 변경 내용(diff) 보기 ---
@@ -125,6 +127,11 @@ public class RepoController {
     @PostMapping("/demo")
     public Map<String, String> demo() throws Exception {
         return Map.of("name", git.seedDemo());
+    }
+
+    private String currentUser(HttpSession session) {
+        Object u = session.getAttribute("user");
+        return u == null ? "사용자" : u.toString();
     }
 
     // --- 오류를 한국어 메시지로 변환 ---

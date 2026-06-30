@@ -264,7 +264,9 @@ public class GitService {
     }
 
     /** 사용자가 직접 정리한 내용으로 충돌을 해결하면서 합치기(2-부모 합치기 기록 생성). */
-    public MergeOutcome resolveMerge(String project, String from, String into, List<Resolution> resolutions) {
+    public MergeOutcome resolveMerge(String project, String from, String into,
+                                     List<Resolution> resolutions, String author) {
+        String who = (author == null || author.isBlank()) ? "사용자" : author;
         synchronized (lock(project)) {
             try (Git git = open(project)) {
                 Repository repo = git.getRepository();
@@ -292,7 +294,8 @@ public class GitService {
                 git.add().addFilepattern(".").call();
 
                 // MERGE_HEAD 가 설정돼 있어 2-부모 합치기 기록이 만들어진다
-                git.commit().setMessage("합치기(충돌 해결): " + from + " → " + into).call();
+                git.commit().setMessage("합치기(충돌 해결): " + from + " → " + into)
+                        .setAuthor(who, who + "@easygit.local").call();
                 return new MergeOutcome(true, "충돌을 해결하고 합쳤습니다.", "MERGED");
 
             } catch (Exception e) {

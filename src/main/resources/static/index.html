@@ -17,8 +17,25 @@
       <select id="project-select"></select>
       <button id="btn-new-project" class="btn">+ 새 프로젝트</button>
       <button id="btn-demo" class="btn btn--ghost">데모 만들기</button>
+      <span id="user-chip" class="auth-chip" hidden></span>
+      <button id="btn-logout" class="btn btn--ghost" hidden>로그아웃</button>
     </div>
   </header>
+
+  <!-- 로그인 화면 -->
+  <div id="auth-overlay" class="auth-overlay" hidden>
+    <div class="auth-box">
+      <h2>쉬운깃 로그인</h2>
+      <p class="auth-sub">변경을 남기려면 로그인하세요. 계정이 없으면 회원가입하세요.</p>
+      <input id="auth-user" class="input" placeholder="아이디" autocomplete="username" />
+      <input id="auth-pass" class="input" type="password" placeholder="비밀번호" autocomplete="current-password" />
+      <div class="row">
+        <button id="auth-login" class="btn btn--primary">로그인</button>
+        <button id="auth-register" class="btn">회원가입</button>
+      </div>
+      <p id="auth-msg" class="auth-msg"></p>
+    </div>
+  </div>
 
   <main class="layout">
     <!-- 1. 작업공간 -->
@@ -42,7 +59,6 @@
           <textarea id="file-content" class="textarea" placeholder="파일 내용을 여기에 작성하세요"></textarea>
           <div class="row">
             <input id="commit-message" class="input" placeholder="무엇을 바꿨나요? (기록 메시지)" />
-            <input id="commit-author" class="input input--sm" placeholder="이름" />
             <button id="btn-commit" class="btn btn--primary">변경 올리기</button>
           </div>
         </div>
