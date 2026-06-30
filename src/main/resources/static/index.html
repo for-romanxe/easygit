@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>쉬운깃 — 한국어 협업 도구</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__brand">
+      <h1>쉬운깃</h1>
+      <span class="topbar__tag">한국어로 쓰는 쉬운 협업 도구</span>
+    </div>
+    <div class="topbar__project">
+      <label for="project-select">프로젝트</label>
+      <select id="project-select"></select>
+      <button id="btn-new-project" class="btn">+ 새 프로젝트</button>
+      <button id="btn-demo" class="btn btn--ghost">데모 만들기</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- 1. 작업공간 -->
+    <section class="card">
+      <h2 class="card__title">작업공간 <small>(따로 작업하는 공간)</small></h2>
+      <ul id="branch-list" class="branch-list"></ul>
+      <div class="row">
+        <input id="branch-name" class="input" placeholder="새 작업공간 이름" />
+        <button id="btn-new-branch" class="btn">만들기</button>
+      </div>
+      <p class="hint">선택한 작업공간: <b id="current-branch">-</b></p>
+    </section>
+
+    <!-- 2. 파일 편집 / 변경 올리기 -->
+    <section class="card">
+      <h2 class="card__title">파일 편집 → 변경 올리기</h2>
+      <div class="file-area">
+        <ul id="file-list" class="file-list"></ul>
+        <div class="editor">
+          <input id="file-path" class="input" placeholder="파일 경로 (예: 메뉴.txt)" />
+          <textarea id="file-content" class="textarea" placeholder="파일 내용을 여기에 작성하세요"></textarea>
+          <div class="row">
+            <input id="commit-message" class="input" placeholder="무엇을 바꿨나요? (기록 메시지)" />
+            <input id="commit-author" class="input input--sm" placeholder="이름" />
+            <button id="btn-commit" class="btn btn--primary">변경 올리기</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. 합치기 -->
+    <section class="card">
+      <h2 class="card__title">합치기 <small>(다른 작업공간과 합치기)</small></h2>
+      <div class="merge-row">
+        <div>
+          <label>가져올 작업공간</label>
+          <select id="merge-from"></select>
+        </div>
+        <span class="merge-arrow">→</span>
+        <div>
+          <label>합칠 대상</label>
+          <select id="merge-into"></select>
+        </div>
+      </div>
+      <div class="row">
+        <button id="btn-check" class="btn">충돌 점검</button>
+        <button id="btn-merge" class="btn btn--primary" disabled>합치기</button>
+        <button id="btn-resolve" class="btn" hidden>충돌 해결하기</button>
+        <button id="btn-review" class="btn btn--ai">AI 리뷰 받기</button>
+      </div>
+      <div id="merge-result" class="merge-result" hidden></div>
+
+      <!-- 충돌 직접 해결 -->
+      <div id="conflict-editor" class="conflict-editor" hidden></div>
+
+      <!-- AI 리뷰 결과 -->
+      <div id="review-output" class="review-output" hidden></div>
+    </section>
+
+    <!-- 4. 찰칵 기록 -->
+    <section class="card">
+      <h2 class="card__title">찰칵 기록 <small>(이 작업공간의 변경 이력)</small></h2>
+      <ul id="history-list" class="history-list"></ul>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
