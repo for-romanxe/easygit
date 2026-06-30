@@ -25,6 +25,7 @@
   const btnResolve = $("btn-resolve");
   const conflictEditor = $("conflict-editor");
   const reviewOutput = $("review-output");
+  const diffOutput = $("diff-output");
   const historyList = $("history-list");
   const toast = $("toast");
 
@@ -87,8 +88,19 @@
     branchList.innerHTML = "";
     branches.forEach((b) => {
       const li = document.createElement("li");
-      li.textContent = b;
-      li.onclick = () => selectBranch(b);
+      li.dataset.branch = b;
+      const name = document.createElement("span");
+      name.textContent = b;
+      name.onclick = () => selectBranch(b);
+      li.appendChild(name);
+      if (b !== "main") {
+        const del = document.createElement("button");
+        del.className = "branch-del";
+        del.textContent = "×";
+        del.title = "이 작업공간 삭제";
+        del.onclick = (e) => { e.stopPropagation(); deleteBranch(b); };
+        li.appendChild(del);
+      }
       branchList.appendChild(li);
     });
 
@@ -106,7 +118,7 @@
     state.branch = branch;
     currentBranchEl.textContent = branch;
     [...branchList.children].forEach((li) =>
-      li.classList.toggle("is-active", li.textContent === branch));
+      li.classList.toggle("is-active", li.dataset.branch === branch));
     await Promise.all([loadFiles(), loadHistory()]);
   }
 
@@ -169,6 +181,8 @@
     if (!state.project) return notify("프로젝트를 먼저 선택하세요", true);
     const from = mergeFrom.value, into = mergeInto.value;
     conflictEditor.hidden = true;
+    diffOutput.hidden = true;
+    reviewOutput.hidden = true;
     if (from === into) return showMergeResult("info", "같은 작업공간끼리는 합칠 수 없습니다.", null);
 
     const r = await api(`/projects/${enc(state.project)}/check-merge?from=${enc(from)}&into=${enc(into)}`);
@@ -203,10 +217,10 @@
       const box = document.createElement("div");
       box.className = "conflict-file";
       box.innerHTML =
-        `<h4>⚠️ ${escapeHtml(f.path)}</h4>` +
+        `<h4>⚠️ ${escapeHtml(f.path)} <small style="color:var(--muted);font-weight:400">— 빨간 줄이 서로 겹친 부분</small></h4>` +
         `<div class="conflict-sides">` +
-          `<div><label>'${escapeHtml(into)}' 쪽</label><pre>${escapeHtml(f.intoContent)}</pre></div>` +
-          `<div><label>'${escapeHtml(from)}' 쪽</label><pre>${escapeHtml(f.fromContent)}</pre></div>` +
+          `<div><label>'${escapeHtml(into)}' 쪽</label><pre>${highlightLines(f.intoContent, f.fromContent)}</pre></div>` +
+          `<div><label>'${escapeHtml(from)}' 쪽</label><pre>${highlightLines(f.fromContent, f.intoContent)}</pre></div>` +
         `</div>` +
         `<div class="conflict-final"><label>최종 내용 (이대로 저장됩니다)</label>` +
           `<textarea data-path="${escapeHtml(f.path)}"></textarea></div>`;
@@ -318,6 +332,37 @@
     await loadBranches(name);
   }
 
+  async function deleteBranch(name) {
+    if (!confirm(`작업공간 '${name}' 을(를) 삭제할까요? 되돌릴 수 없습니다.`)) return;
+    try {
+      await api(`/projects/${enc(state.project)}/branches/${enc(name)}`, { method: "DELETE" });
+      notify(`작업공간 '${name}' 삭제`);
+      await loadBranches(state.branch === name ? "main" : state.branch);
+    } catch (e) {
+      notify(e.message, true);
+    }
+  }
+
+  // 변경 내용(diff) 보기 — API 키 없이도 동작
+  async function showDiff() {
+    if (!state.project) return notify("프로젝트를 먼저 선택하세요", true);
+    const from = mergeFrom.value, into = mergeInto.value;
+    if (from === into) return notify("서로 다른 작업공간을 선택하세요", true);
+    const r = await api(`/projects/${enc(state.project)}/diff?from=${enc(from)}&into=${enc(into)}`);
+    diffOutput.hidden = false;
+    if (!r.diff || !r.diff.trim()) {
+      diffOutput.innerHTML = '<span class="empty">변경 내용이 없습니다.</span>';
+      return;
+    }
+    diffOutput.innerHTML = r.diff.split("\n").map((l) => {
+      let cls = "";
+      if (l.startsWith("+") && !l.startsWith("+++")) cls = "add";
+      else if (l.startsWith("-") && !l.startsWith("---")) cls = "del";
+      else if (l.startsWith("@@")) cls = "hunk";
+      return `<span class="dl ${cls}">${escapeHtml(l) || " "}</span>`;
+    }).join("");
+  }
+
   async function makeDemo() {
     const r = await api("/demo", { method: "POST" });
     notify("데모 프로젝트를 만들었습니다");
@@ -331,6 +376,14 @@
   function fillSelect(sel, items) {
     sel.innerHTML = "";
     items.forEach((i) => sel.add(new Option(i, i)));
+  }
+  // 한쪽 텍스트의 각 줄이 다른 쪽에 없으면 빨갛게 표시
+  function highlightLines(text, otherText) {
+    const others = new Set(otherText.split("\n"));
+    return text.split("\n").map((l) => {
+      const cls = others.has(l) ? "line" : "line diff-line";
+      return `<span class="${cls}">${escapeHtml(l) || " "}</span>`;
+    }).join("");
   }
   function enc(s) { return encodeURIComponent(s); }
   function escapeHtml(s) {
@@ -348,6 +401,7 @@
   $("btn-merge").onclick = wrap(doMerge);
   $("btn-resolve").onclick = wrap(openResolver);
   $("btn-review").onclick = wrap(getReview);
+  $("btn-diff").onclick = wrap(showDiff);
 
   // 에러를 토스트로 보여주는 래퍼
   function wrap(fn) {

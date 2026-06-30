@@ -67,9 +67,15 @@
         <button id="btn-check" class="btn">충돌 점검</button>
         <button id="btn-merge" class="btn btn--primary" disabled>합치기</button>
         <button id="btn-resolve" class="btn" hidden>충돌 해결하기</button>
+      </div>
+      <div class="row">
+        <button id="btn-diff" class="btn">변경 내용 보기</button>
         <button id="btn-review" class="btn btn--ai">AI 리뷰 받기</button>
       </div>
       <div id="merge-result" class="merge-result" hidden></div>
+
+      <!-- 변경 내용(diff) -->
+      <div id="diff-output" class="diff-output" hidden></div>
 
       <!-- 충돌 직접 해결 -->
       <div id="conflict-editor" class="conflict-editor" hidden></div>

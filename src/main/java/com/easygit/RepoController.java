@@ -45,6 +45,13 @@ public class RepoController {
         return Map.of("name", req.name());
     }
 
+    @DeleteMapping("/projects/{project}/branches/{name}")
+    public Map<String, String> deleteBranch(@PathVariable String project,
+                                            @PathVariable String name) throws Exception {
+        git.deleteBranch(project, name);
+        return Map.of("status", "ok");
+    }
+
     // --- 파일 / 변경 올리기 ---
     @GetMapping("/projects/{project}/files")
     public List<String> files(@PathVariable String project, @RequestParam String branch) throws Exception {
@@ -96,6 +103,14 @@ public class RepoController {
     public MergeOutcome resolveMerge(@PathVariable String project,
                                      @RequestBody ResolveReq req) {
         return git.resolveMerge(project, req.from(), req.into(), req.resolutions());
+    }
+
+    // --- 변경 내용(diff) 보기 ---
+    @GetMapping("/projects/{project}/diff")
+    public Map<String, String> diff(@PathVariable String project,
+                                    @RequestParam String from,
+                                    @RequestParam String into) throws Exception {
+        return Map.of("diff", git.diffText(project, from, into));
     }
 
     // --- AI 리뷰 ---

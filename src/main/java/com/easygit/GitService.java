@@ -114,6 +114,19 @@ public class GitService {
         }
     }
 
+    public void deleteBranch(String project, String name) throws Exception {
+        if ("main".equals(name)) throw new IllegalArgumentException("main 작업공간은 삭제할 수 없습니다.");
+        synchronized (lock(project)) {
+            try (Git git = open(project)) {
+                // 지우려는 작업공간이 현재 위치면 main 으로 옮긴 뒤 삭제
+                if (name.equals(git.getRepository().getBranch())) {
+                    git.checkout().setName("main").call();
+                }
+                git.branchDelete().setBranchNames(name).setForce(true).call();
+            }
+        }
+    }
+
     // ---------------------------------------------------------------- 파일
 
     public List<String> files(String project, String branch) throws IOException {

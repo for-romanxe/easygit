@@ -109,6 +109,16 @@ body {
 .branch-list li.is-active { background: var(--primary); color: #fff; border-color: var(--primary); }
 .file-list li.is-active { border-color: var(--primary); color: var(--primary); }
 
+/* 작업공간 줄: 이름 + 삭제버튼 */
+.branch-list li { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.branch-del {
+  border: none; background: transparent; cursor: pointer;
+  font-size: 16px; line-height: 1; color: var(--muted); padding: 0 4px; border-radius: 5px;
+}
+.branch-del:hover { color: var(--danger); background: #fdeced; }
+.branch-list li.is-active .branch-del { color: #dbeafe; }
+.branch-list li.is-active .branch-del:hover { color: #fff; background: rgba(255,255,255,0.15); }
+
 /* 파일 편집 영역 */
 .file-area { display: grid; grid-template-columns: 150px 1fr; gap: 14px; }
 .editor { display: flex; flex-direction: column; gap: 10px; }
@@ -169,9 +179,23 @@ body {
 .conflict-sides label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 3px; }
 .conflict-sides pre {
   background: #f8fafc; border: 1px solid var(--border); border-radius: 6px;
-  padding: 8px; font-size: 12px; max-height: 120px; overflow: auto; white-space: pre-wrap;
+  padding: 8px; font-size: 12px; max-height: 140px; overflow: auto; white-space: pre-wrap;
   font-family: ui-monospace, Consolas, monospace;
 }
+.conflict-sides .line { display: block; padding: 0 2px; }
+.conflict-sides .diff-line { background: #fee2e2; color: var(--danger); border-radius: 3px; }
+
+/* 변경 내용(diff) 보기 */
+.diff-output {
+  margin-top: 14px; padding: 10px;
+  background: #0f172a; border-radius: 8px; overflow: auto; max-height: 320px;
+  font-family: ui-monospace, Consolas, monospace; font-size: 12px; line-height: 1.5;
+}
+.diff-output .dl { display: block; color: #cbd5e1; white-space: pre-wrap; padding: 0 4px; }
+.diff-output .add { background: rgba(22,163,74,0.25); color: #86efac; }
+.diff-output .del { background: rgba(220,38,38,0.25); color: #fca5a5; }
+.diff-output .hunk { color: #7dd3fc; }
+.diff-output .empty { color: #64748b; padding: 6px; }
 .conflict-final label { font-size: 12px; color: var(--ok); font-weight: 600; }
 .conflict-final textarea {
   width: 100%; min-height: 90px; margin-top: 4px;
