@@ -15,10 +15,12 @@ public class RepoController {
 
     private final GitService git;
     private final ReviewService review;
+    private final GiteaService gitea;
 
-    public RepoController(GitService git, ReviewService review) {
+    public RepoController(GitService git, ReviewService review, GiteaService gitea) {
         this.git = git;
         this.review = review;
+        this.gitea = gitea;
     }
 
     // --- 프로젝트 ---
@@ -121,6 +123,12 @@ public class RepoController {
                                @RequestParam String from,
                                @RequestParam String into) {
         return review.review(project, from, into);
+    }
+
+    // --- 실제 Gitea 서버에 올리기 ---
+    @PostMapping("/projects/{project}/publish")
+    public Map<String, Object> publish(@PathVariable String project) {
+        return gitea.publish(project);
     }
 
     // --- 데모 ---

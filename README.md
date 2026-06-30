@@ -25,6 +25,10 @@ GitHub의 협업 기능(작업공간 관리·충돌 점검·합치기)을 **한�
 
 ![로그인](docs/login.png)
 
+**[Gitea에 올리기]** 버튼을 누르면 로컬에 띄운 실제 Gitea 서버로 프로젝트가 그대로 올라갑니다(아래는 Gitea 웹 화면):
+
+![Gitea에 올라간 모습](docs/gitea.png)
+
 ## 구조
 
 ```
@@ -78,6 +82,7 @@ http://localhost:8088
 - **합치기** — 충돌나면 합치지 않고 자동 원상복구
 - **변경 내용 보기** — 합치기로 바뀌는 부분을 색깔 diff(+초록/-빨강)로 표시
 - **AI 리뷰** — Claude(`claude-opus-4-8`)가 변경 코드를 한국어로 리뷰 (`ANTHROPIC_API_KEY` 필요)
+- **Gitea에 올리기** — 로컬에 띄운 **실제 Gitea 서버**에 프로젝트(모든 작업공간)를 푸시
 - **찰칵 기록**(커밋 히스토리)
 
 ## API 요약
@@ -99,7 +104,36 @@ http://localhost:8088
 | GET | `/api/projects/{p}/diff?from=&into=` | 변경 내용(diff) |
 | POST | `/api/projects/{p}/merge` | 합치기 |
 | GET | `/api/projects/{p}/review?from=&into=` | AI 코드 리뷰 |
+| POST | `/api/projects/{p}/publish` | 실제 Gitea 서버에 올리기 |
 | POST | `/api/demo` | 데모 데이터 생성 |
+| POST | `/api/auth/register` · `/login` · `/logout`, GET `/api/auth/me` | 로그인 |
+
+## 실제 Gitea 연동 (선택)
+
+"Gitea에 올리기" 기능은 로컬에 **실제 Gitea 서버**가 떠 있어야 동작합니다. 단일 바이너리로 띄웁니다.
+
+```bash
+# 1) Gitea 바이너리 받기
+mkdir -p ~/gitea-bin ~/gitea-data && cd ~/gitea-bin
+curl -fsSL -o gitea https://dl.gitea.com/gitea/1.22.6/gitea-1.22.6-linux-amd64
+chmod +x gitea
+
+# 2) 설치 화면을 건너뛰는 app.ini 를 ~/gitea-data/app.ini 에 작성
+#    (INSTALL_LOCK=true, DB_TYPE=sqlite3, HTTP_PORT=3000 등)
+
+# 3) 실행 → 첫 실행에서 DB 생성
+GITEA_WORK_DIR=~/gitea-data ./gitea web -c ~/gitea-data/app.ini &
+
+# 4) 관리자 + API 토큰 생성
+GITEA_WORK_DIR=~/gitea-data ./gitea admin user create --admin \
+  --username easyadmin --password '바꾸세요' --email easyadmin@local -c ~/gitea-data/app.ini
+GITEA_WORK_DIR=~/gitea-data ./gitea admin user generate-access-token \
+  --username easyadmin --raw --scopes write:repository,write:user -c ~/gitea-data/app.ini \
+  > ~/gitea-data/token.txt
+```
+
+쉬운깃은 `easygit.gitea.token-file`(기본 `~/gitea-data/token.txt`) 또는 `GITEA_TOKEN` 환경변수에서 토큰을 읽습니다.
+한글 프로젝트 이름은 Gitea 규칙(영문/숫자/.-_)에 맞게 자동 변환해 올립니다.
 
 ## 다음으로 확장하기 좋은 것
 

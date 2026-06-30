@@ -463,6 +463,21 @@
     }).join("");
   }
 
+  // 실제 Gitea 서버에 현재 프로젝트 올리기
+  async function publishGitea() {
+    if (!state.project) return notify("프로젝트를 먼저 선택하세요", true);
+    notify("Gitea에 올리는 중...");
+    const r = await api(`/projects/${enc(state.project)}/publish`, { method: "POST" });
+    notify(r.message, !r.available);
+    const link = $("gitea-link");
+    if (r.url) {
+      link.href = r.url;
+      link.hidden = false;
+    } else {
+      link.hidden = true;
+    }
+  }
+
   async function makeDemo() {
     const r = await api("/demo", { method: "POST" });
     notify("데모 프로젝트를 만들었습니다");
@@ -487,6 +502,7 @@
   projectSelect.onchange = () => selectProject(projectSelect.value);
   $("btn-new-project").onclick = wrap(newProject);
   $("btn-demo").onclick = wrap(makeDemo);
+  $("btn-gitea").onclick = wrap(publishGitea);
   $("btn-new-branch").onclick = wrap(newBranch);
   $("btn-commit").onclick = wrap(commitChange);
   $("btn-check").onclick = wrap(checkMerge);

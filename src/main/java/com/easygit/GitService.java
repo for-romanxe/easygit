@@ -341,6 +341,21 @@ public class GitService {
         }
     }
 
+    /** 로컬 프로젝트의 모든 작업공간을 외부 원격(예: Gitea)으로 올린다(force). */
+    public void pushToRemote(String project, String remoteUrl, String username, String token) throws Exception {
+        synchronized (lock(project)) {
+            try (Git git = open(project)) {
+                git.push()
+                        .setRemote(remoteUrl)
+                        .setRefSpecs(new org.eclipse.jgit.transport.RefSpec("refs/heads/*:refs/heads/*"))
+                        .setCredentialsProvider(
+                                new org.eclipse.jgit.transport.UsernamePasswordCredentialsProvider(username, token))
+                        .setForce(true)
+                        .call();
+            }
+        }
+    }
+
     private RevCommit mergeBase(Repository repo, ObjectId a, ObjectId b) throws IOException {
         try (RevWalk walk = new RevWalk(repo)) {
             walk.setRevFilter(org.eclipse.jgit.revwalk.filter.RevFilter.MERGE_BASE);
