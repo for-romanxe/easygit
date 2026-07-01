@@ -17,12 +17,15 @@ public class RepoController {
     private final ReviewService review;
     private final GiteaService gitea;
     private final MemberService members;
+    private final MergeRequestService requests;
 
-    public RepoController(GitService git, ReviewService review, GiteaService gitea, MemberService members) {
+    public RepoController(GitService git, ReviewService review, GiteaService gitea,
+                          MemberService members, MergeRequestService requests) {
         this.git = git;
         this.review = review;
         this.gitea = gitea;
         this.members = members;
+        this.requests = requests;
     }
 
     // --- 프로젝트 ---
@@ -175,6 +178,85 @@ public class RepoController {
         String me = currentUser(session);
         members.claim(project, me);
         return membersView(project, session);
+    }
+
+    // --- 합치기 요청 (Pull Request) ---
+    @GetMapping("/projects/{project}/requests")
+    public List<RequestView> listRequests(@PathVariable String project, HttpSession session) throws Exception {
+        List<RequestView> out = new java.util.ArrayList<>();
+        for (MergeRequestService.Req r : requests.list(project)) {
+            out.add(toView(project, r, currentUser(session)));
+        }
+        return out;
+    }
+
+    @PostMapping("/projects/{project}/requests")
+    public RequestView createRequest(@PathVariable String project,
+                                     @RequestBody CreateRequestReq req, HttpSession session) throws Exception {
+        String me = currentUser(session);
+        members.requireWrite(project, me);
+        MergeRequestService.Req r = requests.create(project, req.title(), req.desc(), req.from(), req.into(), me);
+        return toView(project, r, me);
+    }
+
+    @GetMapping("/projects/{project}/requests/{id}")
+    public RequestView getRequest(@PathVariable String project, @PathVariable int id,
+                                  HttpSession session) throws Exception {
+        return toView(project, requests.get(project, id), currentUser(session));
+    }
+
+    @PostMapping("/projects/{project}/requests/{id}/approve")
+    public RequestView approveRequest(@PathVariable String project, @PathVariable int id,
+                                      HttpSession session) throws Exception {
+        String me = currentUser(session);
+        members.requireWrite(project, me);
+        requests.approve(project, id, me);
+        return toView(project, requests.get(project, id), me);
+    }
+
+    @PostMapping("/projects/{project}/requests/{id}/merge")
+    public RequestView mergeRequest(@PathVariable String project, @PathVariable int id,
+                                    HttpSession session) throws Exception {
+        String me = currentUser(session);
+        members.requireWrite(project, me);
+        MergeRequestService.Req r = requests.get(project, id);
+        if (!"열림".equals(r.status)) throw new IllegalArgumentException("이미 처리된 요청입니다.");
+        if (r.approvals.isEmpty()) throw new IllegalArgumentException("최소 1명의 승인이 필요합니다.");
+        MergeCheck chk = git.checkMerge(project, r.from, r.into);
+        if (!chk.clean()) {
+            throw new IllegalArgumentException("겹친 부분(충돌)이 있어 바로 합칠 수 없습니다. '합치기' 카드에서 충돌을 먼저 해결하세요.");
+        }
+        MergeOutcome outcome = git.merge(project, r.from, r.into);
+        if (!outcome.success()) throw new IllegalArgumentException(outcome.message());
+        requests.markMerged(project, id, me);
+        return toView(project, requests.get(project, id), me);
+    }
+
+    @PostMapping("/projects/{project}/requests/{id}/close")
+    public RequestView closeRequest(@PathVariable String project, @PathVariable int id,
+                                    HttpSession session) throws Exception {
+        String me = currentUser(session);
+        members.requireWrite(project, me);
+        requests.close(project, id);
+        return toView(project, requests.get(project, id), me);
+    }
+
+    /** 저장된 요청 + 지금 시점의 충돌 점검을 합쳐 화면용으로 변환. */
+    private RequestView toView(String project, MergeRequestService.Req r, String me) throws Exception {
+        boolean clean = false, upToDate = false;
+        List<String> conflicts = List.of(), changes = List.of();
+        if ("열림".equals(r.status)) {
+            MergeCheck chk = git.checkMerge(project, r.from, r.into);
+            clean = chk.clean();
+            upToDate = chk.upToDate();
+            conflicts = chk.conflicts();
+            changes = chk.changes();
+        }
+        boolean canMerge = "열림".equals(r.status) && clean && !upToDate
+                && !r.approvals.isEmpty() && members.canWrite(project, me);
+        return new RequestView(r.id, r.title, r.desc, r.from, r.into, r.author,
+                r.status, r.createdAt, r.approvals, r.mergedBy,
+                clean, upToDate, conflicts, changes, canMerge);
     }
 
     // --- 데모 ---

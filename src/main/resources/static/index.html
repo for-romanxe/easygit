@@ -117,6 +117,30 @@
       <div id="review-output" class="review-output" hidden></div>
     </section>
 
+    <!-- 3-2. 합치기 요청 (Pull Request) -->
+    <section class="card">
+      <h2 class="card__title">합치기 요청 <small>(승인받고 합치기 — GitHub의 PR)</small></h2>
+      <div class="merge-row">
+        <div>
+          <label>가져올 작업공간</label>
+          <select id="req-from"></select>
+        </div>
+        <span class="merge-arrow">→</span>
+        <div>
+          <label>합칠 대상</label>
+          <select id="req-into"></select>
+        </div>
+      </div>
+      <div class="row">
+        <input id="req-title" class="input" placeholder="요청 제목 (예: 메뉴 가격 수정)" />
+      </div>
+      <div class="row">
+        <input id="req-desc" class="input" placeholder="설명(선택)" />
+        <button id="btn-new-request" class="btn btn--primary">요청 올리기</button>
+      </div>
+      <ul id="request-list" class="request-list"></ul>
+    </section>
+
     <!-- 4. 찰칵 기록 -->
     <section class="card">
       <h2 class="card__title">찰칵 기록 <small>(이 작업공간의 변경 이력)</small></h2>

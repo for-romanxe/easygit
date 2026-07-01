@@ -34,6 +34,11 @@ GitHub의 협업 기능(작업공간 관리·충돌 점검·합치기)을 **한�
 
 ![멤버가 아닐 때](docs/member-readonly.png)
 
+바로 합치는 대신 **합치기 요청**(GitHub의 Pull Request)을 올려 **승인을 받고 합칠** 수 있습니다.
+요청마다 지금 시점의 충돌 여부를 점검해 주고, 승인이 있어야 합치기 버튼이 열립니다:
+
+![합치기 요청](docs/requests.png)
+
 **[Gitea에 올리기]** 버튼을 누르면 로컬에 띄운 실제 Gitea 서버로 프로젝트가 그대로 올라갑니다(아래는 Gitea 웹 화면):
 
 ![Gitea에 올라간 모습](docs/gitea.png)
@@ -112,6 +117,7 @@ powershell -ExecutionPolicy Bypass -File \\wsl.localhost\Ubuntu\home\for_romanxe
 - **충돌 점검** — 합치기 전에 겹친 부분을 미리 알려줌 (작업 파일을 건드리지 않음)
 - **충돌 직접 해결** — 양쪽 내용을 보고(다른 줄은 빨갛게 표시) 최종 내용을 작성해 합치기
 - **합치기** — 충돌나면 합치지 않고 자동 원상복구
+- **합치기 요청**(GitHub의 Pull Request) — 바로 합치지 않고 요청을 올려 **승인을 받고** 합침. 요청마다 지금 시점의 충돌 여부를 자동 점검하고, **승인 1개 이상 + 충돌 없음**일 때만 합치기 버튼이 열림. 열림/합쳐짐/닫힘 상태 표시
 - **변경 내용 보기** — 합치기로 바뀌는 부분을 색깔 diff(+초록/-빨강)로 표시
 - **AI 리뷰** — Claude(`claude-opus-4-8`)가 변경 코드를 한국어로 리뷰 (`ANTHROPIC_API_KEY` 필요)
 - **Gitea에 올리기** — 로컬에 띄운 **실제 Gitea 서버**에 프로젝트(모든 작업공간)를 푸시
@@ -135,6 +141,12 @@ powershell -ExecutionPolicy Bypass -File \\wsl.localhost\Ubuntu\home\for_romanxe
 | POST | `/api/projects/{p}/resolve-merge` | 충돌 해결하며 합치기 |
 | GET | `/api/projects/{p}/diff?from=&into=` | 변경 내용(diff) |
 | POST | `/api/projects/{p}/merge` | 합치기 |
+| GET | `/api/projects/{p}/requests` | 합치기 요청 목록(+충돌 점검) |
+| POST | `/api/projects/{p}/requests` | 합치기 요청 올리기 |
+| GET | `/api/projects/{p}/requests/{id}` | 합치기 요청 상세 |
+| POST | `/api/projects/{p}/requests/{id}/approve` | 요청 승인 |
+| POST | `/api/projects/{p}/requests/{id}/merge` | 승인된 요청 합치기 |
+| POST | `/api/projects/{p}/requests/{id}/close` | 요청 닫기 |
 | GET | `/api/projects/{p}/review?from=&into=` | AI 코드 리뷰 |
 | POST | `/api/projects/{p}/publish` | 실제 Gitea 서버에 올리기 |
 | GET | `/api/projects/{p}/members` | 멤버/권한 현황 |
@@ -174,5 +186,6 @@ GITEA_WORK_DIR=~/gitea-data ./gitea admin user generate-access-token \
 ## 다음으로 확장하기 좋은 것
 
 - 멤버별 역할 구분(읽기/쓰기/관리 권한 단계)
-- 작업공간별 보호 규칙(예: main 은 소유자만 합치기 가능)
+- 작업공간별 보호 규칙(예: main 은 합치기 요청을 거쳐야만 변경 가능)
+- 합치기 요청에 댓글/토론 달기
 - 저장 백엔드를 JGit → 셀프호스팅 Gitea 로 교체

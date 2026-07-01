@@ -36,6 +36,9 @@
   const memberAdd = $("member-add");
   const memberClaim = $("member-claim");
   const memberHint = $("member-hint");
+  const reqFrom = $("req-from");
+  const reqInto = $("req-into");
+  const requestList = $("request-list");
 
   // ----- API 도우미 -----
   async function api(path, options) {
@@ -138,11 +141,14 @@
     memberAdd.hidden = true;
     memberClaim.hidden = true;
     memberHint.textContent = "";
+    reqFrom.innerHTML = "";
+    reqInto.innerHTML = "";
+    requestList.innerHTML = "";
   }
 
   async function selectProject(name) {
     state.project = name;
-    await Promise.all([loadBranches(), loadMembers()]);
+    await Promise.all([loadBranches(), loadMembers(), loadRequests()]);
   }
 
   // ----- 멤버 / 권한 -----
@@ -241,7 +247,13 @@
     // 합치기 드롭다운 채우기
     fillSelect(mergeFrom, branches);
     fillSelect(mergeInto, branches);
-    if (branches.length > 1) mergeInto.selectedIndex = branches.indexOf("main") >= 0 ? branches.indexOf("main") : 0;
+    fillSelect(reqFrom, branches);
+    fillSelect(reqInto, branches);
+    const mainIdx = branches.indexOf("main");
+    if (branches.length > 1) {
+      mergeInto.selectedIndex = mainIdx >= 0 ? mainIdx : 0;
+      reqInto.selectedIndex = mainIdx >= 0 ? mainIdx : 0;
+    }
 
     const pick = keepBranch && branches.includes(keepBranch) ? keepBranch
       : (branches.includes("main") ? "main" : branches[0]);
@@ -491,6 +503,167 @@
     }
   }
 
+  // ----- 합치기 요청 (Pull Request) -----
+  async function loadRequests() {
+    const list = await api(`/projects/${enc(state.project)}/requests`);
+    requestList.innerHTML = "";
+    if (list.length === 0) {
+      requestList.innerHTML = '<li class="empty" style="border:none">아직 합치기 요청이 없습니다. 위에서 하나 올려보세요.</li>';
+      return;
+    }
+    list.forEach((r) => requestList.appendChild(buildRequestItem(r)));
+  }
+
+  async function createRequest() {
+    if (!state.project) return notify("프로젝트를 먼저 선택하세요", true);
+    const title = $("req-title").value.trim();
+    const desc = $("req-desc").value.trim();
+    const from = reqFrom.value, into = reqInto.value;
+    if (!title) return notify("요청 제목을 입력하세요", true);
+    if (from === into) return notify("서로 다른 작업공간을 선택하세요", true);
+    await api(`/projects/${enc(state.project)}/requests`, {
+      method: "POST",
+      body: JSON.stringify({ title, desc, from, into }),
+    });
+    $("req-title").value = "";
+    $("req-desc").value = "";
+    notify("합치기 요청을 올렸습니다");
+    await loadRequests();
+  }
+
+  const REQ_BADGE = {
+    "열림": { cls: "open", text: "열림" },
+    "합쳐짐": { cls: "merged", text: "합쳐짐" },
+    "닫힘": { cls: "closed", text: "닫힘" },
+  };
+
+  function buildRequestItem(r) {
+    const li = document.createElement("li");
+    li.className = "req-item";
+
+    // 머리: 번호 + 제목 + 상태뱃지
+    const head = document.createElement("div");
+    head.className = "req-head";
+    const badge = REQ_BADGE[r.status] || { cls: "open", text: r.status };
+    head.innerHTML =
+      `<span class="req-id">#${r.id}</span>` +
+      `<span class="req-title">${escapeHtml(r.title)}</span>` +
+      `<span class="req-badge ${badge.cls}">${escapeHtml(badge.text)}</span>`;
+    li.appendChild(head);
+
+    // 흐름: from → into
+    const flow = document.createElement("div");
+    flow.className = "req-flow";
+    flow.innerHTML = `${escapeHtml(r.from)} <span class="merge-arrow">→</span> ${escapeHtml(r.into)}`;
+    li.appendChild(flow);
+
+    // 본문: 설명 + 메타
+    const body = document.createElement("div");
+    body.className = "req-body";
+    let bodyHtml = "";
+    if (r.desc) bodyHtml += `<div class="req-desc">${escapeHtml(r.desc)}</div>`;
+    const when = new Date(r.createdAt).toLocaleString("ko-KR");
+    bodyHtml += `<div class="req-meta">${escapeHtml(r.author)} 님이 올림 · ${when}</div>`;
+    body.innerHTML = bodyHtml;
+    li.appendChild(body);
+
+    // 상태 줄: 열린 요청은 지금 시점의 충돌 점검 결과를 보여줌
+    if (r.status === "열림") {
+      const line = document.createElement("div");
+      if (r.upToDate) {
+        line.className = "req-status-line info";
+        line.textContent = "이미 최신 — 합칠 변경이 없습니다.";
+      } else if (r.clean) {
+        line.className = "req-status-line ok";
+        line.textContent = `안전하게 합칠 수 있습니다 ✅ (바뀌는 파일 ${r.changes.length}개)`;
+      } else {
+        line.className = "req-status-line conflict";
+        line.textContent = `겹친 부분(충돌) ⚠️ — ${r.conflicts.join(", ")}. '합치기' 카드에서 먼저 해결하세요.`;
+      }
+      li.appendChild(line);
+    } else if (r.status === "합쳐짐") {
+      const line = document.createElement("div");
+      line.className = "req-status-line info";
+      line.textContent = `${escapeHtml(r.mergedBy || "-")} 님이 합쳤습니다.`;
+      li.appendChild(line);
+    }
+
+    // 승인자
+    const appr = document.createElement("div");
+    appr.className = "req-approvals";
+    if (r.approvals.length) {
+      appr.innerHTML = "승인: " + r.approvals.map((a) => `<span class="member-badge">${escapeHtml(a)} ✔</span>`).join(" ");
+    } else {
+      appr.textContent = r.status === "열림" ? "아직 승인이 없습니다." : "";
+    }
+    li.appendChild(appr);
+
+    // 작업 버튼 (열린 요청만)
+    if (r.status === "열림") {
+      const actions = document.createElement("div");
+      actions.className = "req-actions";
+
+      const approveBtn = document.createElement("button");
+      approveBtn.className = "btn";
+      approveBtn.textContent = r.approvals.includes(state.user) ? "승인함 ✔" : "승인하기";
+      approveBtn.disabled = r.approvals.includes(state.user);
+      approveBtn.onclick = wrap(() => approveRequest(r.id));
+      actions.appendChild(approveBtn);
+
+      const mergeBtn = document.createElement("button");
+      mergeBtn.className = "btn btn--primary";
+      mergeBtn.textContent = "합치기";
+      mergeBtn.disabled = !r.canMerge;
+      if (!r.canMerge && r.approvals.length === 0) mergeBtn.title = "먼저 승인이 필요합니다";
+      mergeBtn.onclick = wrap(() => mergeRequest(r.id));
+      actions.appendChild(mergeBtn);
+
+      const diffBtn = document.createElement("button");
+      diffBtn.className = "btn";
+      diffBtn.textContent = "변경 내용 보기";
+      const diffBox = document.createElement("div");
+      diffBox.className = "diff-output";
+      diffBox.hidden = true;
+      diffBtn.onclick = wrap(async () => {
+        if (!diffBox.hidden) { diffBox.hidden = true; return; }
+        const d = await api(`/projects/${enc(state.project)}/diff?from=${enc(r.from)}&into=${enc(r.into)}`);
+        diffBox.hidden = false;
+        renderDiff(diffBox, d.diff);
+      });
+      actions.appendChild(diffBtn);
+
+      const closeBtn = document.createElement("button");
+      closeBtn.className = "btn btn--ghost";
+      closeBtn.textContent = "닫기";
+      closeBtn.onclick = wrap(() => closeRequest(r.id));
+      actions.appendChild(closeBtn);
+
+      li.appendChild(actions);
+      li.appendChild(diffBox);
+    }
+
+    return li;
+  }
+
+  async function approveRequest(id) {
+    await api(`/projects/${enc(state.project)}/requests/${id}/approve`, { method: "POST" });
+    notify("승인했습니다");
+    await loadRequests();
+  }
+
+  async function mergeRequest(id) {
+    await api(`/projects/${enc(state.project)}/requests/${id}/merge`, { method: "POST" });
+    notify("합쳤습니다! (요청이 처리됨)");
+    await Promise.all([loadRequests(), loadBranches(state.branch)]);
+  }
+
+  async function closeRequest(id) {
+    if (!confirm("이 합치기 요청을 닫을까요?")) return;
+    await api(`/projects/${enc(state.project)}/requests/${id}/close`, { method: "POST" });
+    notify("요청을 닫았습니다");
+    await loadRequests();
+  }
+
   // ----- 새 프로젝트 / 작업공간 / 데모 -----
   async function newProject() {
     const name = prompt("새 프로젝트 이름을 입력하세요");
@@ -531,11 +704,16 @@
     if (from === into) return notify("서로 다른 작업공간을 선택하세요", true);
     const r = await api(`/projects/${enc(state.project)}/diff?from=${enc(from)}&into=${enc(into)}`);
     diffOutput.hidden = false;
-    if (!r.diff || !r.diff.trim()) {
-      diffOutput.innerHTML = '<span class="empty">변경 내용이 없습니다.</span>';
+    renderDiff(diffOutput, r.diff);
+  }
+
+  // diff 텍스트를 색깔 입혀 container 에 그린다 (+초록/-빨강/@@파랑)
+  function renderDiff(container, diff) {
+    if (!diff || !diff.trim()) {
+      container.innerHTML = '<span class="empty">변경 내용이 없습니다.</span>';
       return;
     }
-    diffOutput.innerHTML = r.diff.split("\n").map((l) => {
+    container.innerHTML = diff.split("\n").map((l) => {
       let cls = "";
       if (l.startsWith("+") && !l.startsWith("+++")) cls = "add";
       else if (l.startsWith("-") && !l.startsWith("---")) cls = "del";
@@ -593,6 +771,8 @@
   $("btn-diff").onclick = wrap(showDiff);
   $("btn-add-member").onclick = wrap(addMember);
   $("btn-claim").onclick = wrap(claimProject);
+  $("btn-new-request").onclick = wrap(createRequest);
+  $("req-title").addEventListener("keydown", (e) => { if (e.key === "Enter") wrap(createRequest)(); });
   $("member-name").addEventListener("keydown", (e) => { if (e.key === "Enter") wrap(addMember)(); });
 
   $("auth-login").onclick = () => doAuth("login");

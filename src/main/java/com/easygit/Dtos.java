@@ -12,6 +12,7 @@ record MergeReq(String from, String into) {}
 record Resolution(String path, String content) {}
 record ResolveReq(String from, String into, List<Resolution> resolutions) {}
 record AddMemberReq(String username) {}
+record CreateRequestReq(String title, String desc, String from, String into) {}
 
 // --- 응답(Response) ---
 record CommitDto(String id, String message, String author, String when) {}
@@ -32,6 +33,17 @@ record ConflictFile(String path, String intoContent, String fromContent) {}
 
 /** AI 리뷰 결과. */
 record ReviewResult(boolean available, String review) {}
+
+/** 합치기 요청 상세 (요청 정보 + 지금 시점의 충돌 점검 결과). */
+record RequestView(
+        int id, String title, String desc,
+        String from, String into, String author,
+        String status, long createdAt,
+        List<String> approvals, String mergedBy,
+        boolean clean, boolean upToDate,
+        List<String> conflicts, List<String> changes,
+        boolean canMerge   // 지금 로그인한 사람이 이 요청을 합칠 수 있는지
+) {}
 
 /** 프로젝트 멤버/권한 현황. */
 record MembersView(

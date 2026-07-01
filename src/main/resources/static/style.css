@@ -268,6 +268,32 @@ body {
   border: 1px solid var(--ok); border-radius: 6px; padding: 8px;
 }
 
+/* 합치기 요청 (Pull Request) */
+.request-list { list-style: none; display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.req-item { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+.req-head {
+  display: flex; align-items: center; gap: 8px; padding: 10px 12px; cursor: pointer;
+  background: #f8fafc;
+}
+.req-head:hover { background: #f1f5f9; }
+.req-head .req-id { color: var(--muted); font-size: 12px; font-weight: 700; }
+.req-head .req-title { font-weight: 600; font-size: 14px; flex: 1; }
+.req-badge { font-size: 11px; color: #fff; border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.req-badge.open { background: var(--ok); }
+.req-badge.merged { background: var(--primary); }
+.req-badge.closed { background: var(--muted); }
+.req-flow { font-size: 12px; color: var(--muted); font-family: ui-monospace, Consolas, monospace; }
+.req-body { padding: 12px; border-top: 1px solid var(--border); font-size: 13px; }
+.req-body .req-desc { color: #475569; margin-bottom: 8px; white-space: pre-wrap; }
+.req-body .req-meta { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+.req-status-line { margin: 8px 0; padding: 8px 10px; border-radius: 6px; font-size: 13px; }
+.req-status-line.ok { background: var(--ok-bg); border: 1px solid #86efac; }
+.req-status-line.conflict { background: var(--danger-bg); border: 1px solid #fca5a5; }
+.req-status-line.info { background: var(--warn-bg); border: 1px solid #fcd34d; }
+.req-approvals { font-size: 12px; color: var(--muted); margin: 6px 0; }
+.req-approvals b { color: var(--ok); }
+.req-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+
 /* 멤버 / 권한 */
 .member-owner { font-size: 14px; margin-bottom: 10px; }
 .member-you {
