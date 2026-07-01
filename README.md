@@ -70,6 +70,28 @@ http://localhost:8088
 
 (WSL 이므로 Windows 브라우저에서도 같은 주소로 접속됩니다.)
 
+## 팀원과 같이 쓰기 (같은 와이파이 — 해커톤용)
+
+혼자가 아니라 **같은 와이파이(또는 같은 핫스팟)에 있는 팀원들**이 각자 노트북에서 접속하려면,
+WSL2 특성상 Windows 쪽에서 포트 포워딩을 한 번 걸어줘야 합니다.
+
+```bash
+# 1) WSL 에서 접속 주소 확인
+cd /home/for_romanxe/easygit && ./share.sh
+#   -> "팀원 접속 주소: http://<WindowsLAN IP>:8088" 를 알려줌
+```
+
+```powershell
+# 2) Windows '관리자 PowerShell' 에서 한 번 실행 (WSL 재시작 후에도 다시 실행)
+powershell -ExecutionPolicy Bypass -File \\wsl.localhost\Ubuntu\home\for_romanxe\easygit\windows-share.ps1
+```
+
+이제 팀원들은 브라우저에서 `http://<WindowsLAN IP>:8088` 로 접속해, 각자 회원가입하고
+**소유자가 초대한 사람만** 변경하는 방식으로 함께 작업할 수 있습니다.
+
+> 원리: `windows-share.ps1` 이 `Windows:8088 → WSL:8088` 포트 포워딩(netsh portproxy)과
+> 방화벽 인바운드 허용을 설정합니다. WSL 내부 IP 는 재시작 때마다 바뀌므로 스크립트가 자동 감지합니다.
+
 ## 사용해보기 (1분 데모)
 
 1. 우측 상단 **[데모 만들기]** 클릭 → `데모-식당메뉴` 프로젝트가 생성됩니다.
