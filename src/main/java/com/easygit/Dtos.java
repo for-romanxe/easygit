@@ -11,6 +11,7 @@ record CommitReq(String branch, String path, String content, String message, Str
 record MergeReq(String from, String into) {}
 record Resolution(String path, String content) {}
 record ResolveReq(String from, String into, List<Resolution> resolutions) {}
+record AddMemberReq(String username) {}
 
 // --- 응답(Response) ---
 record CommitDto(String id, String message, String author, String when) {}
@@ -31,3 +32,12 @@ record ConflictFile(String path, String intoContent, String fromContent) {}
 
 /** AI 리뷰 결과. */
 record ReviewResult(boolean available, String review) {}
+
+/** 프로젝트 멤버/권한 현황. */
+record MembersView(
+        String owner,             // 소유자(없으면 null)
+        List<String> members,     // 소유자 포함 멤버 목록
+        boolean hasOwner,         // 소유자가 지정돼 있는지
+        boolean isOwner,          // 지금 로그인한 사람이 소유자인지
+        boolean canWrite          // 지금 로그인한 사람이 변경할 수 있는지
+) {}

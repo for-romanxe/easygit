@@ -30,6 +30,12 @@
   const authOverlay = $("auth-overlay");
   const userChip = $("user-chip");
   const logoutBtn = $("btn-logout");
+  const memberOwner = $("member-owner");
+  const memberYou = $("member-you");
+  const memberList = $("member-list");
+  const memberAdd = $("member-add");
+  const memberClaim = $("member-claim");
+  const memberHint = $("member-hint");
 
   // ----- API 도우미 -----
   async function api(path, options) {
@@ -126,11 +132,86 @@
     mergeFrom.innerHTML = "";
     mergeInto.innerHTML = "";
     currentBranchEl.textContent = "-";
+    memberList.innerHTML = "";
+    memberOwner.textContent = "-";
+    memberYou.hidden = true;
+    memberAdd.hidden = true;
+    memberClaim.hidden = true;
+    memberHint.textContent = "";
   }
 
   async function selectProject(name) {
     state.project = name;
-    await loadBranches();
+    await Promise.all([loadBranches(), loadMembers()]);
+  }
+
+  // ----- 멤버 / 권한 -----
+  async function loadMembers() {
+    const m = await api(`/projects/${enc(state.project)}/members`);
+    memberOwner.textContent = m.owner || "(없음)";
+    memberYou.hidden = !m.isOwner;
+
+    memberList.innerHTML = "";
+    m.members.forEach((name) => {
+      const li = document.createElement("li");
+      const isOwner = name === m.owner;
+      const label = document.createElement("span");
+      label.className = "m-name";
+      label.innerHTML = `${escapeHtml(name)}` +
+        (isOwner ? ` <span class="member-badge">소유자</span>` : "") +
+        (name === state.user ? ` <span class="member-you">나</span>` : "");
+      li.appendChild(label);
+      // 소유자만 다른 멤버를 내보낼 수 있음 (소유자 자신은 못 내보냄)
+      if (m.isOwner && !isOwner) {
+        const del = document.createElement("button");
+        del.className = "member-del";
+        del.textContent = "×";
+        del.title = "멤버 내보내기";
+        del.onclick = () => removeMember(name);
+        li.appendChild(del);
+      }
+      memberList.appendChild(li);
+    });
+    if (m.members.length === 0) {
+      memberList.innerHTML = '<li class="empty" style="border:none">아직 멤버가 없습니다</li>';
+    }
+
+    // 소유자면 초대칸, 관리자 없는 프로젝트면 '관리자 되기' 버튼
+    memberAdd.hidden = !m.isOwner;
+    memberClaim.hidden = m.hasOwner;
+
+    if (!m.hasOwner) {
+      memberHint.textContent = "관리자가 없는 프로젝트입니다. 지금은 누구나 변경할 수 있어요. '관리자 되기'로 소유권을 가져오면 멤버만 변경하도록 잠글 수 있습니다.";
+    } else if (m.canWrite) {
+      memberHint.textContent = "당신은 이 프로젝트의 멤버입니다. 변경할 수 있어요.";
+    } else {
+      memberHint.textContent = "당신은 이 프로젝트의 멤버가 아닙니다. 보기만 가능하고, 소유자에게 초대를 요청하세요.";
+    }
+  }
+
+  async function addMember() {
+    const name = $("member-name").value.trim();
+    if (!name) return notify("초대할 아이디를 입력하세요", true);
+    await api(`/projects/${enc(state.project)}/members`, {
+      method: "POST",
+      body: JSON.stringify({ username: name }),
+    });
+    $("member-name").value = "";
+    notify(`'${name}' 을(를) 멤버로 추가했습니다`);
+    await loadMembers();
+  }
+
+  async function removeMember(name) {
+    if (!confirm(`'${name}' 을(를) 이 프로젝트에서 내보낼까요?`)) return;
+    await api(`/projects/${enc(state.project)}/members/${enc(name)}`, { method: "DELETE" });
+    notify(`'${name}' 을(를) 내보냈습니다`);
+    await loadMembers();
+  }
+
+  async function claimProject() {
+    await api(`/projects/${enc(state.project)}/claim`, { method: "POST" });
+    notify("이제 이 프로젝트의 관리자입니다");
+    await loadMembers();
   }
 
   // ----- 작업공간(브랜치) -----
@@ -510,6 +591,9 @@
   $("btn-resolve").onclick = wrap(openResolver);
   $("btn-review").onclick = wrap(getReview);
   $("btn-diff").onclick = wrap(showDiff);
+  $("btn-add-member").onclick = wrap(addMember);
+  $("btn-claim").onclick = wrap(claimProject);
+  $("member-name").addEventListener("keydown", (e) => { if (e.key === "Enter") wrap(addMember)(); });
 
   $("auth-login").onclick = () => doAuth("login");
   $("auth-register").onclick = () => doAuth("register");

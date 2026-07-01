@@ -17,6 +17,9 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* hidden 속성은 항상 우선 (display:flex 등을 가진 요소도 확실히 숨김) */
+[hidden] { display: none !important; }
+
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
     "Noto Sans KR", Roboto, sans-serif;
@@ -264,6 +267,28 @@ body {
   width: 100%; min-height: 80px; font-family: ui-monospace, Consolas, monospace; font-size: 12px;
   border: 1px solid var(--ok); border-radius: 6px; padding: 8px;
 }
+
+/* 멤버 / 권한 */
+.member-owner { font-size: 14px; margin-bottom: 10px; }
+.member-you {
+  display: inline-block; font-size: 11px; color: #fff; background: var(--primary);
+  border-radius: 999px; padding: 1px 8px; margin-left: 4px;
+}
+.member-list { list-style: none; display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.member-list li {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px;
+}
+.member-list li .m-name { display: flex; align-items: center; gap: 6px; }
+.member-badge {
+  display: inline-block; font-size: 10px; color: #fff; background: var(--warn);
+  border-radius: 4px; padding: 0 5px;
+}
+.member-del {
+  border: none; background: transparent; cursor: pointer;
+  font-size: 16px; line-height: 1; color: var(--muted); padding: 0 4px; border-radius: 5px;
+}
+.member-del:hover { color: var(--danger); background: #fdeced; }
 
 @media (max-width: 860px) {
   .layout { grid-template-columns: 1fr; }

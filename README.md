@@ -25,6 +25,15 @@ GitHub의 협업 기능(작업공간 관리·충돌 점검·합치기)을 **한�
 
 ![로그인](docs/login.png)
 
+프로젝트를 만든 사람이 **소유자**가 되고, 소유자가 **멤버를 초대**할 수 있습니다.
+멤버가 아닌 사람은 보기만 가능합니다:
+
+![멤버/권한 화면](docs/members.png)
+
+멤버가 아닌 사람이 볼 때(읽기 전용):
+
+![멤버가 아닐 때](docs/member-readonly.png)
+
 **[Gitea에 올리기]** 버튼을 누르면 로컬에 띄운 실제 Gitea 서버로 프로젝트가 그대로 올라갑니다(아래는 Gitea 웹 화면):
 
 ![Gitea에 올라간 모습](docs/gitea.png)
@@ -74,6 +83,7 @@ http://localhost:8088
 ## 기능
 
 - **로그인 / 회원가입** — 변경은 로그인한 사용자만 가능, 모든 기록이 그 사용자 이름으로 남음
+- **멤버 / 권한** — 프로젝트를 만든 사람이 소유자가 되고, 소유자가 멤버를 초대·내보냄. **멤버만 변경 가능**, 나머지는 보기 전용. 소유자 없는(옛) 프로젝트는 "관리자 되기"로 소유권을 가져올 수 있음
 - 프로젝트 만들기 / 선택
 - 작업공간(브랜치) 목록 · 새 작업공간 만들기 · **삭제**(× 버튼, main은 보호)
 - 파일 보기 · 편집 · **변경 올리기**(add + commit 통합)
@@ -105,6 +115,10 @@ http://localhost:8088
 | POST | `/api/projects/{p}/merge` | 합치기 |
 | GET | `/api/projects/{p}/review?from=&into=` | AI 코드 리뷰 |
 | POST | `/api/projects/{p}/publish` | 실제 Gitea 서버에 올리기 |
+| GET | `/api/projects/{p}/members` | 멤버/권한 현황 |
+| POST | `/api/projects/{p}/members` | 멤버 추가(소유자만) |
+| DELETE | `/api/projects/{p}/members/{name}` | 멤버 내보내기(소유자만) |
+| POST | `/api/projects/{p}/claim` | 소유자 없는 프로젝트의 관리자 되기 |
 | POST | `/api/demo` | 데모 데이터 생성 |
 | POST | `/api/auth/register` · `/login` · `/logout`, GET `/api/auth/me` | 로그인 |
 
@@ -137,6 +151,6 @@ GITEA_WORK_DIR=~/gitea-data ./gitea admin user generate-access-token \
 
 ## 다음으로 확장하기 좋은 것
 
-- 여러 사람 로그인 / 권한
-- 줄 단위로 "이쪽/저쪽 선택" 버튼을 둔 더 쉬운 충돌 해결 UI
+- 멤버별 역할 구분(읽기/쓰기/관리 권한 단계)
+- 작업공간별 보호 규칙(예: main 은 소유자만 합치기 가능)
 - 저장 백엔드를 JGit → 셀프호스팅 Gitea 로 교체

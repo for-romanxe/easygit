@@ -51,6 +51,21 @@
       <p class="hint">선택한 작업공간: <b id="current-branch">-</b></p>
     </section>
 
+    <!-- 1-2. 멤버 / 권한 -->
+    <section class="card">
+      <h2 class="card__title">멤버 <small>(이 프로젝트를 함께 하는 사람)</small></h2>
+      <p class="member-owner">소유자: <b id="member-owner">-</b> <span id="member-you" class="member-you" hidden>나</span></p>
+      <ul id="member-list" class="member-list"></ul>
+      <div id="member-add" class="row" hidden>
+        <input id="member-name" class="input" placeholder="초대할 아이디" />
+        <button id="btn-add-member" class="btn">멤버 추가</button>
+      </div>
+      <div id="member-claim" class="row" hidden>
+        <button id="btn-claim" class="btn btn--primary">이 프로젝트의 관리자 되기</button>
+      </div>
+      <p id="member-hint" class="hint"></p>
+    </section>
+
     <!-- 2. 파일 편집 / 변경 올리기 -->
     <section class="card">
       <h2 class="card__title">파일 편집 → 변경 올리기</h2>

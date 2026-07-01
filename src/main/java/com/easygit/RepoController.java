@@ -16,11 +16,13 @@ public class RepoController {
     private final GitService git;
     private final ReviewService review;
     private final GiteaService gitea;
+    private final MemberService members;
 
-    public RepoController(GitService git, ReviewService review, GiteaService gitea) {
+    public RepoController(GitService git, ReviewService review, GiteaService gitea, MemberService members) {
         this.git = git;
         this.review = review;
         this.gitea = gitea;
+        this.members = members;
     }
 
     // --- 프로젝트 ---
@@ -31,7 +33,9 @@ public class RepoController {
 
     @PostMapping("/projects")
     public Map<String, String> createProject(@RequestBody CreateProjectReq req, HttpSession session) throws Exception {
-        git.createProject(req.name(), currentUser(session));
+        String me = currentUser(session);
+        git.createProject(req.name(), me);
+        members.setOwner(req.name(), me); // 만든 사람이 소유자
         return Map.of("name", req.name());
     }
 
@@ -43,14 +47,16 @@ public class RepoController {
 
     @PostMapping("/projects/{project}/branches")
     public Map<String, String> createBranch(@PathVariable String project,
-                                            @RequestBody CreateBranchReq req) throws Exception {
+                                            @RequestBody CreateBranchReq req, HttpSession session) throws Exception {
+        members.requireWrite(project, currentUser(session));
         git.createBranch(project, req.name(), req.from());
         return Map.of("name", req.name());
     }
 
     @DeleteMapping("/projects/{project}/branches/{name}")
     public Map<String, String> deleteBranch(@PathVariable String project,
-                                            @PathVariable String name) throws Exception {
+                                            @PathVariable String name, HttpSession session) throws Exception {
+        members.requireWrite(project, currentUser(session));
         git.deleteBranch(project, name);
         return Map.of("status", "ok");
     }
@@ -72,6 +78,7 @@ public class RepoController {
     public Map<String, String> commit(@PathVariable String project,
                                       @RequestBody CommitReq req, HttpSession session) throws Exception {
         // 변경한 사람은 로그인한 사용자로 기록 (수동 이름 입력 대신)
+        members.requireWrite(project, currentUser(session));
         git.commit(project, req.branch(), req.path(), req.content(), req.message(), currentUser(session));
         return Map.of("status", "ok");
     }
@@ -91,7 +98,8 @@ public class RepoController {
 
     @PostMapping("/projects/{project}/merge")
     public MergeOutcome merge(@PathVariable String project,
-                              @RequestBody MergeReq req) throws Exception {
+                              @RequestBody MergeReq req, HttpSession session) throws Exception {
+        members.requireWrite(project, currentUser(session));
         return git.merge(project, req.from(), req.into());
     }
 
@@ -106,6 +114,7 @@ public class RepoController {
     @PostMapping("/projects/{project}/resolve-merge")
     public MergeOutcome resolveMerge(@PathVariable String project,
                                      @RequestBody ResolveReq req, HttpSession session) {
+        members.requireWrite(project, currentUser(session));
         return git.resolveMerge(project, req.from(), req.into(), req.resolutions(), currentUser(session));
     }
 
@@ -127,8 +136,45 @@ public class RepoController {
 
     // --- 실제 Gitea 서버에 올리기 ---
     @PostMapping("/projects/{project}/publish")
-    public Map<String, Object> publish(@PathVariable String project) {
+    public Map<String, Object> publish(@PathVariable String project, HttpSession session) {
+        members.requireWrite(project, currentUser(session));
         return gitea.publish(project);
+    }
+
+    // --- 멤버(권한) ---
+    @GetMapping("/projects/{project}/members")
+    public MembersView membersView(@PathVariable String project, HttpSession session) {
+        String me = currentUser(session);
+        return new MembersView(
+                members.owner(project),
+                members.members(project),
+                members.hasOwner(project),
+                me.equals(members.owner(project)),
+                members.canWrite(project, me));
+    }
+
+    @PostMapping("/projects/{project}/members")
+    public MembersView addMember(@PathVariable String project,
+                                 @RequestBody AddMemberReq req, HttpSession session) {
+        String me = currentUser(session);
+        members.addMember(project, me, req.username());
+        return membersView(project, session);
+    }
+
+    @DeleteMapping("/projects/{project}/members/{name}")
+    public MembersView removeMember(@PathVariable String project,
+                                    @PathVariable String name, HttpSession session) {
+        String me = currentUser(session);
+        members.removeMember(project, me, name);
+        return membersView(project, session);
+    }
+
+    /** 소유자 없는(옛) 프로젝트의 관리자가 되기. */
+    @PostMapping("/projects/{project}/claim")
+    public MembersView claim(@PathVariable String project, HttpSession session) {
+        String me = currentUser(session);
+        members.claim(project, me);
+        return membersView(project, session);
     }
 
     // --- 데모 ---
