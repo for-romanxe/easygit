@@ -30,6 +30,14 @@ public class MergeRequestService {
         public long createdAt;
         public List<String> approvals = new ArrayList<>(); // 승인한 사람들
         public String mergedBy;      // 합친 사람(합쳐졌을 때)
+        public List<Comment> comments = new ArrayList<>(); // 댓글/토론
+    }
+
+    /** 합치기 요청에 달린 댓글 하나. */
+    public static class Comment {
+        public String author;
+        public String text;
+        public long createdAt;
     }
 
     private final File file = new File("data/requests.json");
@@ -102,6 +110,19 @@ public class MergeRequestService {
         Req r = get(project, id);
         r.status = "합쳐짐";
         r.mergedBy = user;
+        save();
+        return r;
+    }
+
+    public Req addComment(String project, int id, String author, String text) {
+        if (text == null || text.isBlank()) throw new IllegalArgumentException("댓글 내용을 입력하세요.");
+        Req r = get(project, id);
+        Comment c = new Comment();
+        c.author = author;
+        c.text = text.trim();
+        c.createdAt = System.currentTimeMillis();
+        if (r.comments == null) r.comments = new ArrayList<>();
+        r.comments.add(c);
         save();
         return r;
     }

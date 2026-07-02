@@ -294,6 +294,17 @@ body {
 .req-approvals b { color: var(--ok); }
 .req-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 
+/* 합치기 요청 — 댓글/토론 */
+.req-comments { margin-top: 10px; border-top: 1px dashed var(--border); padding-top: 8px; }
+.comment-list { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.comment { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; }
+.comment-head { display: flex; align-items: baseline; gap: 8px; }
+.comment-head b { font-size: 13px; }
+.comment-when { font-size: 11px; color: var(--muted); }
+.comment-text { font-size: 13px; margin-top: 2px; white-space: pre-wrap; word-break: break-word; }
+.comment-input { display: flex; gap: 8px; }
+.comment-input .input { flex: 1; }
+
 /* 멤버 / 권한 */
 .member-owner { font-size: 14px; margin-bottom: 10px; }
 .member-you {

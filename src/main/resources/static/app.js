@@ -598,6 +598,45 @@
     }
     li.appendChild(appr);
 
+    // 댓글/토론
+    const comments = document.createElement("div");
+    comments.className = "req-comments";
+    const cList = document.createElement("ul");
+    cList.className = "comment-list";
+    (r.comments || []).forEach((c) => cList.appendChild(buildComment(c)));
+    if (!r.comments || r.comments.length === 0) {
+      cList.innerHTML = '<li class="empty" style="border:none">아직 의견이 없습니다. 합치기 전에 서로 의견을 남겨보세요.</li>';
+    }
+    comments.appendChild(cList);
+
+    // 멤버는 열림/합쳐짐 상태에 의견을 남길 수 있음 (닫힌 요청은 잠금)
+    if (r.status !== "닫힘") {
+      const cInput = document.createElement("div");
+      cInput.className = "comment-input";
+      const ta = document.createElement("input");
+      ta.className = "input";
+      ta.placeholder = "의견 남기기 (예: 가격 반영 확인했어요 👍)";
+      const send = document.createElement("button");
+      send.className = "btn";
+      send.textContent = "의견 올리기";
+      const submit = wrap(async () => {
+        const text = ta.value.trim();
+        if (!text) return notify("의견 내용을 입력하세요", true);
+        await api(`/projects/${enc(state.project)}/requests/${r.id}/comments`, {
+          method: "POST",
+          body: JSON.stringify({ text }),
+        });
+        ta.value = "";
+        notify("의견을 남겼습니다");
+        await loadRequests();
+      });
+      send.onclick = submit;
+      ta.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+      cInput.append(ta, send);
+      comments.appendChild(cInput);
+    }
+    li.appendChild(comments);
+
     // 작업 버튼 (열린 요청만)
     if (r.status === "열림") {
       const actions = document.createElement("div");
@@ -642,6 +681,17 @@
       li.appendChild(diffBox);
     }
 
+    return li;
+  }
+
+  function buildComment(c) {
+    const li = document.createElement("li");
+    li.className = "comment";
+    const when = new Date(c.createdAt).toLocaleString("ko-KR");
+    li.innerHTML =
+      `<div class="comment-head"><b>${escapeHtml(c.author)}</b>` +
+      `<span class="comment-when">${when}</span></div>` +
+      `<div class="comment-text">${escapeHtml(c.text)}</div>`;
     return li;
   }
 

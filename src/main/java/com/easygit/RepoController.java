@@ -241,6 +241,15 @@ public class RepoController {
         return toView(project, requests.get(project, id), me);
     }
 
+    @PostMapping("/projects/{project}/requests/{id}/comments")
+    public RequestView commentRequest(@PathVariable String project, @PathVariable int id,
+                                      @RequestBody AddCommentReq req, HttpSession session) throws Exception {
+        String me = currentUser(session);
+        members.requireWrite(project, me);
+        requests.addComment(project, id, me, req.text());
+        return toView(project, requests.get(project, id), me);
+    }
+
     /** 저장된 요청 + 지금 시점의 충돌 점검을 합쳐 화면용으로 변환. */
     private RequestView toView(String project, MergeRequestService.Req r, String me) throws Exception {
         boolean clean = false, upToDate = false;
@@ -254,9 +263,15 @@ public class RepoController {
         }
         boolean canMerge = "열림".equals(r.status) && clean && !upToDate
                 && !r.approvals.isEmpty() && members.canWrite(project, me);
+        List<CommentView> comments = new java.util.ArrayList<>();
+        if (r.comments != null) {
+            for (MergeRequestService.Comment c : r.comments) {
+                comments.add(new CommentView(c.author, c.text, c.createdAt));
+            }
+        }
         return new RequestView(r.id, r.title, r.desc, r.from, r.into, r.author,
                 r.status, r.createdAt, r.approvals, r.mergedBy,
-                clean, upToDate, conflicts, changes, canMerge);
+                clean, upToDate, conflicts, changes, canMerge, comments);
     }
 
     // --- 데모 ---
